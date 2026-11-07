@@ -1,7 +1,8 @@
 // Audio diagnostics: is the caller's microphone reaching us, and is the Chert Mac taking our voice?
 import { AudioStream, RoomEvent, TrackKind } from '@livekit/rtc-node';
 
-export function audioDiagnostics(room, session, voice, log) {
+// Logs media health only (track events, audio levels). Caller words are logged only when debug is on.
+export function audioDiagnostics(room, session, voice, log, debug = false) {
   const kind = k => (k === TrackKind.KIND_AUDIO ? 'audio' : k === TrackKind.KIND_VIDEO ? 'video' : 'other');
 
   room.on(RoomEvent.LocalTrackSubscribed, track => log(`Mac subscribed to our ${kind(track.kind)} track "${track.name}"`));
@@ -45,5 +46,5 @@ export function audioDiagnostics(room, session, voice, log) {
 
   session.on(voice.AgentSessionEventTypes.UserStateChanged, e => log(`user is ${e.newState}`));
   session.on(voice.AgentSessionEventTypes.AgentStateChanged, e => log(`agent is ${e.newState}`));
-  session.on(voice.AgentSessionEventTypes.UserInputTranscribed, e => { if (e.isFinal) log(`heard caller: "${e.transcript}"`); });
+  if (debug) session.on(voice.AgentSessionEventTypes.UserInputTranscribed, e => { if (e.isFinal) log(`heard caller: "${e.transcript}"`); });
 }

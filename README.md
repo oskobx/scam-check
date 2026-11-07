@@ -29,6 +29,24 @@ Scam Check:
 
 It never asks for passwords, PINs, Social Security or card numbers.
 
+## Privacy and safety
+
+Seniors show Scam Check letters that may contain their name, address and account numbers, so privacy is built in at every step:
+
+| Risk | What Scam Check does |
+|---|---|
+| Senior reads out a password, SSN or card number | The agent never asks for them, and gently stops the caller: *"You don't need to tell me that. Please keep it private."* It never repeats personal details back. |
+| Personal details on the letter | The vision model is instructed to write `[redacted]` for the recipient's name, address, email, phone, date of birth and any SSN, card, account, policy or case number. A second, code-level scrubber (`scrubPersonal`) removes SSN-, card- and account-number patterns from everything the model returns. The scammer's own phone number or link is kept, so the senior knows not to use it. |
+| Personal data sent to the web search | The search query (`safeSearchQuery`) describes only the *type* of scam ("IRS email threatening asset seizure scam"). All digits, phone numbers, emails and links are stripped before anything is sent to Keenable. |
+| Recording and storage | Calls are **not recorded** (`record: false`). Camera images are kept only in memory (the latest frame, discarded after 3 s) and are **never written to disk**. A picture is sent for reading **only when the senior asks** the agent to look. Vision requests use `store: false`. |
+| Logs | By default the logs contain only technical events (call connected, tool used, audio level), **never what the caller said or showed**. Content logging is opt-in for troubleshooting (`SCAMCHECK_DEBUG=1`). |
+| Transparency | Every call starts with: this call is not recorded, and never share passwords or ID numbers with anyone, including Scam Check. |
+| Secrets | API keys stay in `.env.local`, which is git-ignored. |
+
+**Third parties:** call audio/video passes through Chert (FaceTime bridge) and LiveKit (media rooms), and is processed by
+OpenAI (voice and vision). Keenable only receives the sanitized search query. A production deployment for SASCC would
+add a data-processing review with these providers, a spoken consent step, and a published privacy notice.
+
 ## How it works
 
 ```

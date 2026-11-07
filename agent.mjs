@@ -18,7 +18,13 @@ How you talk:
 - Be clear you are an AI helper, not the police, bank, or government.
 - Always speak English. The caller may be in a noisy room: ignore background chatter, short noises, and stray words or
   fragments in other languages. If you didn't clearly catch what they said, kindly ask them to repeat it.
-- Never ask for passwords, PINs, Social Security numbers, bank or card numbers. If they start to read one out, gently stop them.
+
+Privacy (very important):
+- Never ask for passwords, PINs, verification codes, Social Security numbers, bank or card numbers, or date of birth.
+  If they start to read one out, gently stop them: "You don't need to tell me that. Please keep it private."
+- Never repeat back any personal detail you see or hear (their name, address, account or ID numbers).
+  Talk about the scam, not about them. The tools already hide personal details; keep it that way.
+- If they ask, explain simply: you don't record calls, you don't save pictures, and you only look when they ask you to.
 
 How you help:
 1. Ask them to hold the item up to the camera, close and steady, with good light.
@@ -33,7 +39,10 @@ How you help:
    then the National Elder Fraud Hotline at 1-833-372-8311, and report at ReportFraud.ftc.gov.
 If they describe a phone call instead of showing something, you can still use search_scam_reports based on what they tell you.`;
 
-const greeting = 'Greet the caller warmly in one short sentence: you are Scam Check, an AI helper, and they can hold up anything suspicious to the camera.';
+const greeting = 'Greet the caller warmly in two short sentences: you are Scam Check, an AI helper, and they can hold up anything suspicious or tell you what happened. Then say this call is not recorded, and they should never share passwords or ID numbers with anyone, including you.';
+
+// Privacy: by default nothing the caller says or shows is written to the logs. Set SCAMCHECK_DEBUG=1 to troubleshoot.
+const DEBUG = process.env.SCAMCHECK_DEBUG === '1';
 
 export default defineAgent({
   entry: async ctx => {
@@ -62,14 +71,14 @@ export default defineAgent({
         parameters: z.object({ question: z.string().describe("What the caller said about the item, or '' if nothing") }),
         execute: async ({ question }) => {
           const png = camera.snapshotPng();
-          console.log(`[look_at_camera] called (${png ? 'have a camera frame' : 'NO camera frame'}) question="${question}"`);
+          console.log(`[look_at_camera] called (${png ? 'have a camera frame' : 'NO camera frame'})${DEBUG ? ` question="${question}"` : ''}`);
           if (!png) return 'No camera picture right now. Ask the caller to switch to FaceTime Video, turn their camera on, and hold the item up.';
           try {
-            const result = await readItem(png, question);
-            console.log('[look_at_camera]\n' + result);
+            const result = await readItem(png, question); // image is sent once, never saved; personal details redacted
+            if (DEBUG) console.log('[look_at_camera]\n' + result);
             return result;
           } catch (e) {
-            console.error('[look_at_camera] failed', e);
+            console.error('[look_at_camera] failed:', e?.message);
             return "Couldn't read the picture due to a technical problem. Ask them to describe it or read the sender and what it asks for.";
           }
         },
@@ -80,11 +89,11 @@ export default defineAgent({
         execute: async ({ query }) => {
           try {
             const results = await searchScamReports(query);
-            console.log(`[search_scam_reports] "${query}" -> ${results.length} results`);
+            console.log(`[search_scam_reports] ${results.length} results${DEBUG ? ` for "${query}"` : ''}`);
             if (!results.length) return 'No reports found online. That does not mean it is safe.';
             return JSON.stringify(results);
           } catch (e) {
-            console.error('[search_scam_reports] failed', e);
+            console.error('[search_scam_reports] failed:', e?.message);
             return 'The web search is unavailable right now. Judge from the warning signs alone.';
           }
         },
@@ -102,7 +111,7 @@ export default defineAgent({
       }),
     });
     session.on(voice.AgentSessionEventTypes.AgentStateChanged, event => { speaking = event.newState === 'speaking'; });
-    audioDiagnostics(ctx.room, session, voice, log);
+    audioDiagnostics(ctx.room, session, voice, log, DEBUG);
     ctx.addShutdownCallback(async () => {
       clearInterval(timer);
       camera.close();

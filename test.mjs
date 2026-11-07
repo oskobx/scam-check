@@ -1,6 +1,6 @@
 // Test the scam pipeline without FaceTime:  npm test -- path/to/photo.jpg
 import { readFileSync } from 'node:fs';
-import { readItem, searchScamReports } from './scamtools.mjs';
+import { readItem, safeSearchQuery, searchScamReports } from './scamtools.mjs';
 
 const path = process.argv[2];
 if (!path) { console.log('Usage: npm test -- path/to/photo.(jpg|png)'); process.exit(2); }
@@ -10,7 +10,7 @@ console.log('Reading the item...\n');
 const reading = await readItem(readFileSync(path), '', mime);
 console.log(reading);
 
-const query = reading.match(/SEARCH QUERY:\s*(.+)/i)?.[1]?.replace(/^"|"$/g, '').trim();
+const query = safeSearchQuery(reading.match(/SEARCH QUERY:\s*(.+)/i)?.[1] || '');
 if (query) {
   console.log(`\nSearching Keenable for: ${query}\n`);
   for (const r of await searchScamReports(query)) console.log(`- ${r.date || '?'}  ${r.site}  ${r.title}\n  ${r.url}`);
